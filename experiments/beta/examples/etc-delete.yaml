@@ -1,0 +1,4 @@
+apiVersion: v1alpha1
+kind: EtcFileConfig
+name: demo.txt
+$patch: delete

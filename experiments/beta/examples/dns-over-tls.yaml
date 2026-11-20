@@ -1,0 +1,6 @@
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 9.9.9.9
+    protocol: DoT
+    tlsServerName: dns.quad9.net

@@ -1,0 +1,6 @@
+apiVersion: v1alpha1
+kind: EtcFileConfig
+name: demo.txt
+mode: 0o644
+contents: |
+  Configured by a machine config document

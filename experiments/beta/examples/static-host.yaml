@@ -1,0 +1,5 @@
+apiVersion: v1alpha1
+kind: StaticHostConfig
+name: 10.5.1.200
+hostnames:
+  - registry.lab.example.com

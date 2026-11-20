@@ -1,0 +1,4 @@
+apiVersion: v1alpha1
+kind: KubeNodeConfig
+labels:
+  lab.example.com/tier: this-value-is-much-too-long-for-a-kubernetes-label-value-so-validation-fails
