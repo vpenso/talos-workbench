@@ -1,0 +1,46 @@
+# Values for `cilium install` on a Talos control plane.
+# cilium-cli does not auto-detect Talos, so Talos-specific settings go here.
+
+# Pod IP allocation. "kubernetes" means Cilium does not run its own IPAM;
+# it takes the pod CIDR that Talos wrote into node.spec.podCIDR
+# (from the KubeNetworkConfig) and hands out pod IPs from it.
+ipam:
+  mode: kubernetes
+
+# Let the Cilium agent act as the replacement for kube-proxy.
+# Must match the other side: KubeProxyConfig.enabled is false in
+# talos-network.yaml, so Cilium is the only thing doing
+# service load balancing (ClusterIP, NodePort, ExternalIP).
+kubeProxyReplacement: true
+
+# KubePrism: a local load balancer for the Kubernetes API.
+# With the API servers on only one control plane node (10.5.1.2),
+# every node needs a reachable API endpoint. KubePrism listens
+# on localhost:7445 on each node and forwards to the API server
+# that actually runs. kubectl, kubelet, and all pods use this
+# instead of the real API server address.
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+# cgroup handling. Cilium normally tries to mount cgroup v2
+# itself (autoMount). Talos already owns /sys/fs/cgroup,
+# so let Talos keep that role; Cilium only writes into it.
+cgroup:
+  autoMount:
+    enabled: false
+    # Where the cgroup v2 filesystem is mounted on Talos nodes.
+    hostRoot: /sys/fs/cgroup
+
+# Capabilities the Cilium pods need. These are the Helm chart
+# defaults, minus SYS_MODULE: Talos does not let pods load
+# kernel modules (XDP/eBPF program loading), so that capability
+# would only produce errors.
+securityContext:
+  capabilities:
+    # Main agent: needs wide socket/namespace control to
+    # build the overlay-free network and redirect traffic.
+    ciliumAgent: [CHOWN, KILL, NET_ADMIN, NET_RAW, IPC_LOCK, SYS_ADMIN, SYS_RESOURCE, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    # One-shot Job that clears Cilium state on startup;
+    # needs to flush BPF maps and tc rules.
+    cleanCiliumState: [NET_ADMIN, SYS_ADMIN, SYS_RESOURCE]
+
