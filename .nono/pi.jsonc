@@ -1,0 +1,161 @@
+{
+  // Pi sandbox: generic dev environment + pi agent state.
+  // Extends the built-in "default" profile, which carries the deny-group
+  // core (credentials, keychains, browser data, shell configs/history)
+  // and signal isolation. This profile then layers pi grants on top.
+  //
+  // Verify with:  nono why -p pi --path /etc/passwd --op write  # DENIED
+  //               nono why -p pi --host example.org --port 443  # ALLOWED
+  "meta": {
+    "name": "default",
+    "version": "2.3.0",
+    "description": "Pi default (docker blocked)"
+  },
+
+  // Hardening re-declared explicitly on top of the inherited default.
+  "security": {
+    "signal_mode": "isolated",
+    "capability_elevation": false
+  },
+
+  "filesystem": {
+    // Read-write paths the agent needs at runtime:
+    // /dev/ptmx   pty allocation floor (without it, interactive shells fail)
+    // /tmp/jiti   jiti TypeScript loader cache
+    // ~/.pi       pi agent state (sessions, config, auth)
+    "allow": [
+      "/dev/ptmx",
+      "/tmp/jiti",
+      "$HOME/.pi"
+    ],
+    // Read-only: shell environment, prompt config, skills, installed
+    // software (~/bin, ~/opt), fonts, nono package store.
+    // Already covered by included groups (removed from this list):
+    //   ~/.nvm            node_runtime
+    //   ~/.config/mise    mise_manager
+    //   /tmp              linux_temp_read
+    "read": [
+      "/etc/bashrc",
+      "/etc/machine-id",
+      "/etc/profile",
+      "/etc/profile.d/",
+      "$HOME/.agents/skills",
+      "$HOME/.bash_profile",
+      "$HOME/.bashrc",
+      "$HOME/.bashrc.d/",
+      "$HOME/.config/dir-colors/",
+      "$HOME/.config/starship.toml",
+      "$HOME/.config/pi-web",
+      "$HOME/.fonts/",
+      "$HOME/bin",
+      "$HOME/opt",
+      "$NONO_PACKAGES",
+      "$NONO_CONFIG/profiles",
+      "/usr/include",
+      "/usr/libexec"
+    ],
+    "write": [],
+    "allow_file": [],
+    // Single-file grant. Hardcoded absolute path — breaks if the repo
+    // moves.
+    "read_file": [
+      "/home/vpenso/projects/workbench/configs/mise/config.toml"
+    ],
+    "write_file": [],
+    "unix_socket": [],
+    "unix_socket_bind": [],
+    // /run/systemd/userdb is a DIRECTORY of sockets; the dir grant covers
+    // connect on its direct children (verified: io.systemd.DynamicUser
+    // ALLOWED). Use unix_socket for a single socket file.
+    "unix_socket_dir": [
+      "/run/systemd/userdb"
+    ],
+    "unix_socket_dir_bind": [],
+    "unix_socket_subtree": [],
+    "unix_socket_subtree_bind": [],
+    "deny": [],
+    // Lifts the deny_shell_configs group for these two files.
+    // Does not grant access by itself — the matching read entries above
+    // do the granting.
+    "bypass_protection": [
+      "$HOME/.bash_profile",
+      "$HOME/.bashrc"
+    ]
+  },
+
+  // Inherited deny groups plus runtime and tooling groups.
+  // macOS variants included for cross-platform portability.
+  "groups": {
+    "include": [
+      "deny_credentials",
+      "deny_keychains_linux",
+      "deny_browser_data_linux",
+      "system_read_linux_core",
+      "system_write_linux",
+      "user_tools",
+      "dangerous_commands",
+      "dangerous_commands_linux",
+      "mise_manager",
+      "node_runtime",
+      "python_runtime",
+      "user_caches_linux",
+      "linux_sysfs_read",
+      "linux_temp_read",
+      "git_config",
+      "unlink_protection"
+    ],
+    "exclude": []
+  },
+
+  // block: false = unrestricted network. The `pi` launcher relies on
+  // this for the plain `pi` invocation. `pi gated` adds an
+  // --allow-domain whitelist on top instead of a profile change.
+  "network": {
+    "block": false,
+    "network_profile": null,
+    "allow_domain": [],
+    "credentials": [],
+    "open_port": [],
+    "listen_port": [],
+    "no_proxy": [],
+    "upstream_proxy": null,
+    "upstream_bypass": []
+  },
+
+  // A posture, not a grant: makes every UNgranted pathname socket
+  // default-deny via seccomp. This is what blocks /var/run/docker.sock
+  // here (see dev-containers for the deliberate grant + guardrails).
+  "linux": {
+    "af_unix_mediation": "pathname"
+  },
+
+  // CWD shared read-write; pair with --allow-cwd at launch.
+  "workdir": {
+    "access": "readwrite"
+  },
+
+  // Excluded from atomic-rollback snapshots (bulk, generated, transient).
+  "rollback": {
+    "exclude_patterns": [
+      "node_modules",
+      ".next",
+      "__pycache__",
+      "target",
+      ".pi"
+    ],
+    "exclude_globs": [
+      "*.tmp.[0-9]*.[0-9]*"
+    ]
+  },
+
+  // open_urls origins for agent web tooling; localhost true is a known
+  // pitfall (documented in notes/personal/tools/nono.md).
+  "open_urls": {
+    "allow_origins": [
+      "https://github.com"
+    ],
+    "allow_localhost": true
+  },
+
+  "allow_launch_services": true
+}

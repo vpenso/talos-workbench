@@ -1,0 +1,11 @@
+[tools]
+talosctl = "latest"
+kubectl = "latest"
+helm = "latest"
+cilium-cli = "latest"
+jq = "latest"
+yq = "latest"
+
+[bootstrap.repos]
+"tmp/talos-lab" = { url = "https://github.com/dennisklein/talos-labs.git" }
+"tmp/talos" = { url = "https://github.com/siderolabs/talos.git" }
