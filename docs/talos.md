@@ -91,3 +91,14 @@ Design Principles
   - The docs recommend the flag over storing nodes in the config file.
   - Each endpoint proxies requests to other nodes. You keep one endpoint for the whole cluster.
   - Endpoint and node must join the same cluster. Proxying uses certificate auth.
+
+**KubePrism**  
+<https://docs.siderolabs.com/talos/v1.14/configure-your-talos-cluster/system-configuration/kubeprism>
+* In-cluster highly-available control plane endpoint
+* How it is build...
+  - TCP load balancer on `localhost:7445` of every node.
+  - Filters out unhealthy endpoints and prefers lower latency.
+  - Talos reconfigures `kubelet`, `kube-scheduler`, `kube-controller-manager`, and `kube-proxy` to use it
+  - The port is local only; it cannot be reached from outside the cluster.
+  - Enabled by default; disable by removing the `KubePrismConfig` document.
+  - Worst case it behaves the same as the external endpoint, so it never makes things worse.
