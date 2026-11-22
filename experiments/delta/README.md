@@ -184,7 +184,7 @@ Roles:               os:admin
 Certificate expires: 1 year from now (2027-11-22)
 ```
 
-## Install
+## Local Installation
 
 Sends a machine config to a running node, **turns maintenance-mode ISO nodes into cluster members**
 
@@ -229,3 +229,274 @@ talosctl get unattendedinstallstatus -n 10.5.1.2
 NODE       NAMESPACE   TYPE                      ID                   VERSION   PHASE
 10.5.1.2   runtime     UnattendedInstallStatus   unattended-install   1         installed
 ```
+
+## Bootstrap Kubernetes
+
+**Bootstrap starts etcd on the first control plane node.**
+
+- New control plane nodes run etcd in join mode
+- They wait forever for existing etcd peers
+- `talosctl bootstrap` tells one node to give up waiting
+- That node creates a single-node etcd cluster
+- Only then can the Kubernetes control plane start
+
+Without it, the cluster never comes up.
+
+```bash
+talosctl bootstrap # no output equals success
+# Is etcd up?
+talosctl service etcd
+```
+```txt
+NODE     10.5.1.2
+ID       etcd
+STATE    Running
+HEALTH   OK
+EVENTS   [Running]: Health check successful (1m52s ago)
+         [Running]: Started task etcd (PID 133) for container etcd (1m57s ago)
+         [Preparing]: Creating service runner (1m57s ago)
+         [Preparing]: Running pre state (1m57s ago)
+         [Waiting]: Waiting for volumes /var/lib, ETCD to be mounted, service "cri" to be "up", time sync, network, etcd spec (1m57s ago)
+         [Starting]: Starting service (1m57s ago)
+```
+
+**Show the health of the core Kubernetes control plane component**:
+
+```bash
+# Is Kubernetes running on the node?
+talosctl get staticpodstatus
+```
+```txt
+NODE       *   NAMESPACE   TYPE              ID                                                         VERSION   READY
+10.5.1.2   +   k8s         StaticPodStatus   kube-system/kube-apiserver-delta-controlplane-1            1         True
+10.5.1.2   +   k8s         StaticPodStatus   kube-system/kube-controller-manager-delta-controlplane-1   1         True
+10.5.1.2   +   k8s         StaticPodStatus   kube-system/kube-scheduler-delta-controlplane-1            1         True
+```
+
+**What are static pods?**
+
+- apiserver, controller-manager, scheduler run as static pods
+- Talos writes their manifests to disk itself (the StaticPodServerController)
+- kubelet starts them directly, no controller deploys them
+- One set of static pods exists per control plane node
+
+ Get a working `kubectl` and prove the cluster is usable.
+
+```bash
+export KUBECONFIG="$PWD/nodes/kubeconfig"
+talosctl kubeconfig "$KUBECONFIG"
+# first real Kubernetes API call, using that credentialat 
+kubectl get nodes -o wide
+```
+```txt
+NAME                   STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION          CONTAINER-RUNTIME
+delta-controlplane-1   Ready    control-plane   13m   v1.37.1   10.5.1.2      <none>        Talos (v1.14.6)   6.18.63-talos (amd64)   containerd://2.3.7
+delta-worker-1         Ready    <none>          13m   v1.37.1   10.5.1.3      <none>        Talos (v1.14.6)   6.18.63-talos (amd64)   containerd://2.3.7
+```
+
+What the output proves
+
+- Both nodes are registered in the cluster API
+- `Ready` — kubelet reports healthy on both
+- `control-plane` role is set on the control plane node
+- `INTERNAL-IP` matches the network: 10.5.1.2 and 10.5.1.3
+- `OS-IMAGE` confirms both run Talos v1.14.6
+- This is the end of the delta flow: OS installed, etcd up, control plane up, nodes joined
+
+# Experiments
+
+## Partitions & Volumes
+
+**`get discoveredvolumes`** — raw detection: every disk and partition the node sees
+
+- Reports what it found on the hardware: filesystem type, size, labels
+- Includes the ISO drive (`sr0`) and the in-RAM SquashFS (`loop1`)
+
+
+
+
+```bash
+talosctl get discoveredvolumes
+```
+```txt
+NODE       NAMESPACE   TYPE               ID      VERSION   TYPE        SIZE     DISCOVERED   LABEL       PARTITIONLABEL
+10.5.1.2   runtime     DiscoveredVolume   loop1   1         disk        94 MB    squashfs                 
+10.5.1.2   runtime     DiscoveredVolume   sr0     1         disk        1.1 GB                            
+10.5.1.2   runtime     DiscoveredVolume   vda     1         disk        11 GB    gpt                      
+10.5.1.2   runtime     DiscoveredVolume   vda1    1         partition   2.2 GB   vfat         EFI         EFI
+10.5.1.2   runtime     DiscoveredVolume   vda2    1         partition   1.0 MB   talosmeta                META
+10.5.1.2   runtime     DiscoveredVolume   vda3    1         partition   105 MB   xfs          STATE       STATE
+10.5.1.2   runtime     DiscoveredVolume   vda4    1         partition   8.4 GB   xfs          EPHEMERAL   EPHEMERAL
+```
+
+**`get volumestatuses`** — managed state: the volumes Talos actually owns
+
+- Shows each volume's lifecycle `PHASE` (here: `ready`)
+- Shows which device backs it (`/dev/vda1-4`)
+
+```bash
+talosctl get volumestatuses
+```
+```txt
+NODE       NAMESPACE   TYPE           ID            VERSION   TYPE        PHASE   LOCATION    SIZE
+#...
+10.5.1.2   runtime     VolumeStatus   EPHEMERAL     3         partition   ready   /dev/vda4   8.4 GB
+#...           
+10.5.1.2   runtime     VolumeStatus   META          3         partition   ready   /dev/vda2   1.0 MB
+10.5.1.2   runtime     VolumeStatus   STATE         7         partition   ready   /dev/vda3   105 MB
+```
+
+**`get mountstatuses`** — mount points: where each device is attached in the filesystem
+
+```bash
+talosctl get mountstatuses
+```
+```txt
+NODE       NAMESPACE   TYPE          ID           VERSION   SOURCE      TARGET  FILESYSTEM   VOLUME
+#...
+10.5.1.2   runtime     MountStatus   EPHEMERAL    5         /dev/vda4   /var    xfs          EPHEMERAL
+```
+
+The partition layout for the local disk:
+
+- **`vda1`**, 2.2 GB, vfat, label **`EFI`** — boot partition
+  - Holds GRUB, kernel images, initrd
+  - Mounted at `/boot`
+- **`vda2`**, 1.0 MB, talosmeta, label **`META`**
+  - Key-value store, not a normal filesystem
+  - Holds install state, boot mode, upgrade metadata
+- **`vda3`**, 105 MB, xfs, label **`STATE`**
+  - Holds the machine config and the Talos state database (all the resources)
+- **`vda4`**, 8.4 GB, xfs, label **`EPHEMERAL`** — mounted at `/var`
+  - Holds container images, etcd data (`/var/lib/etcd`), kubelet data
+  - "Ephemeral" because it is wiped on reinstall or reset
+
+## Comparison
+
+This section compares the two machine configs:
+
+- `.talos/controlplane.yaml` — auto-generated by `talosctl cluster create qemu` (the provisioner)
+- `nodes/controlplane.yaml` — rendered by hand with `talosctl gen config install`
+
+```bash
+# Lists the kind of every document in each multi-doc YAML, then diffs the two lists
+diff <(yq -N '.kind // "(v1alpha1)"' .talos/controlplane.yaml) \
+     <(yq -N '.kind // "(v1alpha1)"' nodes/controlplane.yaml)
+```
+```txt
+30,31d29
+< LinkAliasConfig
+< DHCPv4Config
+```
+
+The provisioner adds `LinkAliasConfig` and `DHCPv4Config`. Reason:
+
+- `talosctl cluster create` runs a **userspace load balancer** on the host at the gateway IP `10.5.1.1`
+- `LinkAliasConfig` gives a stable name to a network interface (no IPs involved)
+- `DHCPv4Config` lets the node get its **IP from the DHCP server** (provisioner runs on the bridge)
+- Your manual `gen config` has none of this, because you set a static IP in the config patch
+
+```bash
+yq 'select(.kind == "KubeClusterConfig") | .endpoint' \
+      .talos/controlplane.yaml nodes/controlplane.yaml
+```
+```txt
+https://10.5.1.1:6443
+---
+https://10.5.1.2:6443
+```
+
+- Provisioner: `https://10.5.1.1:6443` — the load balancer VIP, survives node loss
+- Manual: `https://10.5.1.2:6443` — the raw node IP you passed to `gen config install`
+
+Why this matters for your experiment...
+
+- With your manual config, clients must reach the node IP directly
+- The provisioner endpoint 10.5.1.1 keeps working even if the control plane node changed IP
+- The two configs are otherwise identical — the delta proves both paths converge
+
+## Maintenance Mode
+
+```bash
+talosctl -n 10.5.1.3 reset --reboot
+```
+
+* `--graceful` (default) cordons and drains the node first.
+* `--wipe-mode all` (default) deletes the complete system disk. The next boot uses the ISO again.
+* `--reboot` starts it again after the wipe.
+
+```bash
+kubectl get nodes
+```
+```txt
+NAME                   STATUS                        ROLES           AGE   VERSION
+delta-controlplane-1   Ready                         control-plane   40m   v1.37.1
+delta-worker-1         NotReady,SchedulingDisabled   <none>          40m   v1.37.1
+```
+
+The node is in maintenance mode again
+
+```bash
+talosctl -n 10.5.1.3 version --insecure
+talosctl -n 10.5.1.3 get disks --insecure
+```
+
+Install the worker again:
+
+```bash
+talosctl apply-config --insecure -n 10.5.1.3 \
+      --file nodes/worker.yaml \
+      --config-patch @patches/worker-1.yaml
+kubectl get nodes --watch 
+```
+```txt
+Applied configuration without a reboot
+NAME                   STATUS                        ROLES           AGE   VERSION
+delta-controlplane-1   Ready                         control-plane   43m   v1.37.1
+delta-worker-1         NotReady,SchedulingDisabled   <none>          45m   v1.37.1
+delta-worker-1         NotReady                      <none>          45m   v1.37.1
+#...
+delta-worker-1         Ready                         <none>          46m   v1.37.1
+```
+
+The node gets the same name and joins again. Kubernetes uses the existing Node object.
+
+## Reset Partitions
+
+Install some workload and check the container image:
+
+```bash
+kubectl apply -f deployment.yaml
+kubectl rollout status deployment/web
+kubectl get pods -l app=web -o wide
+
+talosctl -n 10.5.1.3 image list --namespace cri | grep nginx
+```
+```txt
+10.5.1.3   docker.io/library/nginx:1.29-alpine                                                                  sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de   26 MB    io.cri-containerd.image=managed                                   2026-11-22T15:55:21Z
+10.5.1.3   docker.io/library/nginx@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de      sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de   26 MB    io.cri-containerd.image=managed                                   2026-11-22T15:55:21Z
+```
+
+**Wipe only `EPHEMERAL` and reboot**
+
+```bash
+talosctl -n 10.5.1.3 reset --system-labels-to-wipe EPHEMERAL --reboot
+```
+
+When the node is `Ready` again, examine the result:
+
+```bash
+# watch it self-heal
+kubectl get pods -l app=web -o wide --watch
+```
+
+- The old pod object is replaced by a new one (new name suffix, new IP)
+- RESTARTS of the Deployment stays at 0; the pod was recreated, not restarted
+
+**Why this heals...**
+
+- The Deployment controller runs on the control plane, in etcd
+- It compares desired state (1 replica) with actual state
+- After the wipe, the pod is `Completed` or gone — both count as "not running"
+- The controller creates a new pod on the node, kubelet starts it, image re-pulled
+
