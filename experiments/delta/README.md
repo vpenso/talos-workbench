@@ -1,7 +1,9 @@
 ---
 title: Talos with Qemu
 date: 2026/11/21
-date-modified: 2026/11/22
+date-modified: 2026/11/23
+abstract: |
+  This document builds a local Talos cluster (1 control plane, 1 worker) on QEMU, from ISO boot in maintenance mode through a manual install to a Ready cluster, then experiments with its partition layout, machine configs, and node reset flows.
 ---
 
 # Deployment
