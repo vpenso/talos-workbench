@@ -1,0 +1,83 @@
+---
+title: Talos Installation
+date: 2026/11/23
+---
+
+# Releases
+
+Supported Kubernetes versions and platforms per Talos version  
+<https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix>
+* Talos minor releases ship every 4 months, aligned with the Kubernetes cycle
+* Each Talos minor has a **default Kubernetes** version (Talos 1.14 ships 1.37).
+* Each Talos minor supports **six Kubernetes minors**, counted back from its default.
+* The versions are **independent**: a Talos upgrade does not change Kubernetes.
+* To raise Kubernetes past the supported range, upgrade Talos first.
+* Migrations are tested only between adjacent minor versions.
+
+# Image Factory
+
+Image Factory documentation, source and UI:  
+<https://docs.siderolabs.com/talos/v1.14/learn-more/image-factory>  
+<https://github.com/siderolabs/image-factory>  
+<https://factory.talos.dev>
+
+* Frontends: HTTP download, PXE, and container registry.
+* A **model** is one image. Inputs: schematic ID, Talos version, model type, architecture.
+* The installer image serves install and upgrade...
+  - ...carries only system extensions
+  - ...kernel args and META apply only to boot media.
+* Use the same **schematic** for boot media and installer image...
+  - ...or the extensions change at first install.
+* Built on the Talos `imager` container; all images are signed. It can also run on-premises.
+
+### Assets
+
+Five classes:
+
+* ISO — bootable install media for install to disk.
+* Kernel, initramfs, kernel command line...
+  - ...components required for network boot (PXE)...
+  - ...script at `pxe.factory.talos.dev` references the kernel and initramfs over HTTP.
+* UKI — a Unified Kernel Image...
+  - ...kernel, initramfs, and command line packed into one EFI file
+  - ...for UEFI boot, especially Secure Boot.
+* Disk images
+  - Full disk image with Talos already installed.
+  - The machine boots straight into a working Talos system.
+  - For upgrades ...either build a new image or run an in-place upgrade via installer
+* Installer image — installs Talos to disk (also performs upgrades)
+
+Practical Difference
+
+- **Boot assets** ...bare metal / PXE / fresh installs  
+  cf. [platform-specific-installations/boot-assets](https://docs.siderolabs.com/talos/v1.14/platform-specific-installations/boot-assets)
+- Disk images ...cloud providers (AWS AMI), VMs where you want ready-made images.
+- System extensions can be baked into either, or just into the `installer` image.
+
+### Schematic
+
+* A **schematic** is a small YAML file with the customizations of a Talos image:
+  - `systemExtensions`,
+  - `extraKernelArgs`,
+  - `meta` values
+  - `overlay` (for single board computers)
+* It is **content-addressable**: the ID is a hash of the content.
+  - The same file always gives the same ID.
+  - The vanilla schematic has ID `3765...b4ba`.
+
+# System Extensions
+
+System Extensions — extend the Talos root filesystem  
+cf. [build-and-extend-talos/custom-images-and-development/system-extensions](https://docs.siderolabs.com/talos/v1.14/build-and-extend-talos/custom-images-and-development/system-extensions)
+
+* Add files (drivers, container runtimes, firmware) to Talos's immutable root filesystem...
+* ...only activated during the installation or upgrade of Talos Linux
+* Official Tiers cf. [siderolabs/extensions](https://github.com/siderolabs/extensions)
+  - `core`: fully supported by Sidero Labs
+  - `extra`: best-effort support, still updated by Sidero Labs
+  - `contrib`: community supported, disabled if build fails
+* Use Image Factory to build boot assets...
+  - ...depending on the extension include in both initial boot assets and disk images
+
+
+[build-and-extend-talos/custom-images-and-development/building-a-system-extension](https://docs.siderolabs.com/talos/v1.14/build-and-extend-talos/custom-images-and-development/building-a-system-extension)
