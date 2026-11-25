@@ -1,4 +1,34 @@
 
+# Talos Config
+
+**`talosconfig` file is talosctl's client configuration**
+
+Generation and location:
+
+- Created by `talosctl gen config` alongside `controlplane.yaml`/`worker.yaml`.
+- Default path: `~/.talos/config`.
+- Override with `--talosconfig <path>` or the `TALOSCONFIG` environment variable
+
+Direct manual editing is discouraged; use the CLI.
+
+```bash
+# Client-side connection setup for the active context
+talosctl config info
+
+# Address to the active context's endpoints
+talosctl config endpoint $ip ...
+
+# Set the target node(s)
+talosctl config node $node0 ...
+```
+
+What each does
+
+- `endpoints` — Addresses `talosctl` connects to for the Talos API (port 50000).
+- `nodes` — Default targets for commands. They do not have to be endpoints.
+
+
+
 ## Machine Configuration  
 
 **Required Inputs**

@@ -1,7 +1,7 @@
 ---
 title: Talos with Qemu
 date: 2026/11/21
-date-modified: 2026/11/23
+date-modified: 2026/11/25
 abstract: |
   This document builds a local Talos cluster (1 control plane, 1 worker) on QEMU, from ISO boot in maintenance mode through a manual install to a Ready cluster, then experiments with its partition layout, machine configs, and node reset flows.
 ---
@@ -18,6 +18,7 @@ Creates QEMU cluster: 1 controlplane, 1 worker, network 10.5.1.0/24
 talos_version=$(talosctl version --client | awk '/Tag:/ {print $2; exit}')
 export TALOSCONFIG="$PWD/.talos/talosconfig"
 export KUBECONFIG="$PWD/.talos/kubeconfig"
+
 
 # Start the cluster
 sudo --preserve-env=HOME,TALOSCONFIG,KUBECONFIG \
@@ -225,11 +226,12 @@ talosctl config info
  ```
 
  ```bash
-talosctl get unattendedinstallstatus -n 10.5.1.2
+talosctl get unattendedinstallstatus -n 10.5.1.2,10.5.1.3
 ```
 ```txt
 NODE       NAMESPACE   TYPE                      ID                   VERSION   PHASE
 10.5.1.2   runtime     UnattendedInstallStatus   unattended-install   1         installed
+10.5.1.3   runtime     UnattendedInstallStatus   unattended-install   1         installed
 ```
 
 ## Bootstrap Kubernetes

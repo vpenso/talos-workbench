@@ -30,6 +30,18 @@ Image Factory documentation, source and UI:
   - ...or the extensions change at first install.
 * Built on the Talos `imager` container; all images are signed. It can also run on-premises.
 
+Get the installer image
+
+```bash
+talosctl -n 10.5.1.2 get machineconfig -o json \
+      | jq -r '.spec' \
+      | yq 'select(.kind == "UnattendedInstallConfig") \
+      | .installer.image'
+```
+```txt
+factory.talos.dev/metal-installer/376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba:v1.14.6
+```
+
 ### Assets
 
 Five classes:
@@ -61,6 +73,9 @@ Practical Difference
   - `extraKernelArgs`,
   - `meta` values
   - `overlay` (for single board computers)
+
+A **schematic ID** is a deterministic hash of an image
+
 * It is **content-addressable**: the ID is a hash of the content.
   - The same file always gives the same ID.
   - The vanilla schematic has ID `3765...b4ba`.
@@ -79,5 +94,15 @@ cf. [build-and-extend-talos/custom-images-and-development/system-extensions](htt
 * Use Image Factory to build boot assets...
   - ...depending on the extension include in both initial boot assets and disk images
 
+[custom-images-and-development/building-a-system-extension](https://docs.siderolabs.com/talos/v1.14/build-and-extend-talos/custom-images-and-development/building-a-system-extension)
 
-[build-and-extend-talos/custom-images-and-development/building-a-system-extension](https://docs.siderolabs.com/talos/v1.14/build-and-extend-talos/custom-images-and-development/building-a-system-extension)
+# Upgrade
+
+Talos keeps two OS images (A/B slots)  
+[lifecycle-management/upgrading-talos](https://docs.siderolabs.com/talos/v1.14/configure-your-talos-cluster/lifecycle-management/upgrading-talos)
+
+* ...failed upgrade can revert to a previous image
+* **How it works**
+- The previous kernel and OS image are kept after each upgrade.
+- If the new image cannot boot, the bootloader automatically falls back.
+- `talosctl rollback` updates the boot reference and reboots.
