@@ -1,6 +1,8 @@
 ---
-title: Talos Maintenance and Recovery 
+title: Talos Maintenance & Recovery 
 date: 2026/11/26
+abstract: |
+  This experiment runs a three-control-plane Talos Linux QEMU cluster with a Layer 2 VIP for the Kubernetes API and verifies that the API stays reachable during VIP failover and a hung node, then performs etcd maintenance, replaces a control plane node, and recovers the whole cluster from an etcd snapshot.
 ---
 
 # Deployment 

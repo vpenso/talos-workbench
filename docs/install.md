@@ -3,10 +3,10 @@ title: Talos Installation
 date: 2026/11/23
 ---
 
-# Releases
+## Releases
 
 Supported Kubernetes versions and platforms per Talos version  
-<https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix>
+cf. [support-matrix](https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix)
 * Talos minor releases ship every 4 months, aligned with the Kubernetes cycle
 * Each Talos minor has a **default Kubernetes** version (Talos 1.14 ships 1.37).
 * Each Talos minor supports **six Kubernetes minors**, counted back from its default.
@@ -95,6 +95,53 @@ cf. [build-and-extend-talos/custom-images-and-development/system-extensions](htt
   - ...depending on the extension include in both initial boot assets and disk images
 
 [custom-images-and-development/building-a-system-extension](https://docs.siderolabs.com/talos/v1.14/build-and-extend-talos/custom-images-and-development/building-a-system-extension)
+
+# Secure Boot
+
+**Threats it blocks**
+
+- Tampered boot path from attackers with physical or firmware access.
+- Stolen disks open only on its own TPM in the same boot state.
+- Prevents silent rollback or swap to a different Linux kernel.
+- Prevents changes to the kernel command line (PCR 11.
+
+**TPM** (Trusted Platform Module)
+
+- Small hardware chip on the board that stores cryptographic keys
+  - Keys can be generated inside the chip and never leave it in usable form.
+  - TPM 2.0 is the current spec ...adds PCR policies
+- **PCRs** (Platform Configuration Registers)
+  - Numbered values (PCR 0–23) that the firmware and bootloader extend...
+  - ...with measurements of every boot step.
+  - A PCR value is a fingerprint of the boot path.
+- Software can seal (encrypt) a key to PCR values
+  - The TPM decrypts it only when those PCRs still match.
+  - That is how Talos hides the LUKS disk keys.
+
+## Boot Chain
+
+![](trusted-boot-chain.svg)
+
+- UEFI firmware
+  - Must support Secure Boot and populate PCR 7
+  - Sidero Labs secure boot public key (and its certificate)
+  - PCR 7 measures the Secure Boot state and the keys in the firmware.
+- Bootloader
+  - `systemd-boot` signed
+  - Firmware checks its signature before running it.
+- Signed kernel image (UKI)
+  - One signed file with kernel, initramfs, and kernel command line.
+  - The command line cannot be changed later.
+  - PCR 11 measures the signed UKI (kernel, initramfs, command line).
+
+## Firmware
+
+Firmware and systemd-boot measure each step into TPM PCRs.
+
+- **PCR 7** holds the Secure Boot state and keys.
+- **PCR 11** holds UKI measurements.
+  - Talos matches them against a policy signed by Sidero Labs.
+  - The TPM unseals the STATE and EPHEMERAL (LUKS2) keys only when both match
 
 # Upgrade
 

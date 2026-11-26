@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 660"
+       font-family="ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+    <defs>
+      <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5"
+              orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/>
+      </marker>
+      <marker id="arrow-rose" markerWidth="9" markerHeight="9" refX="7" refY="4.5"
+              orient="auto" markerUnits="userSpaceOnUse">
+        <path d="M0,0 L9,4.5 L0,9 Z" fill="#e11d48"/>
+      </marker>
+      <linearGradient id="tpm-rose" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff1f2"/>
+        <stop offset="0.5" stop-color="#ffe4e6"/>
+        <stop offset="1" stop-color="#fff1f2"/>
+      </linearGradient>
+    </defs>
+
+    <rect x="0" y="0" width="1320" height="660" fill="#ffffff"/>
+
+    <text x="660" y="40" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Trusted Boot Chain</text>
+    <text x="660" y="64" text-anchor="middle" font-size="14" fill="#475569">Secure Boot · signed boot image · TPM 2.0 seals the disk keys to the boot state</text>
+
+    <!-- FIRMWARE TIER (blue) -->
+    <rect x="40" y="78" width="1000" height="104" rx="14" fill="#f1f5f9" stroke="#e2e8f0"/>
+    <text x="60" y="98" font-size="12" font-weight="700" letter-spacing="2" fill="#0284c7">FIRMWARE TIER · SECURE BOOT ON</text>
+    <rect x="60" y="108" width="960" height="58" rx="10" fill="#eff6ff" stroke="#0284c7" stroke-opacity="0.55"/>
+    <text x="80" y="132" font-size="14.5" font-weight="700" fill="#0c4a6e">UEFI firmware <tspan fill="#0284c7" font-size="11.5">· Secure Boot on</tspan></text>
+    <text x="80" y="154" font-size="12.5" fill="#475569">trusted keys in db · verifies each step before it runs · measures Secure Boot state to the TPM</text>
+
+    <!-- BOOTLOADER TIER (violet) -->
+    <rect x="40" y="198" width="1000" height="104" rx="14" fill="#f1f5f9" stroke="#e2e8f0"/>
+    <text x="60" y="218" font-size="12" font-weight="700" letter-spacing="2" fill="#8b5cf6">BOOTLOADER TIER</text>
+    <rect x="60" y="228" width="960" height="58" rx="10" fill="#f5f3ff" stroke="#8b5cf6" stroke-opacity="0.55"/>
+    <text x="80" y="252" font-size="14.5" font-weight="700" fill="#4c1d95">bootloader <tspan fill="#8b5cf6" font-size="11.5">· signed</tspan></text>
+    <text x="80" y="274" font-size="12.5" fill="#475569">runs only if the firmware verified it · verifies the kernel image signature</text>
+
+    <!-- KERNEL TIER (green, hero box) -->
+    <rect x="40" y="318" width="1000" height="138" rx="14" fill="#f1f5f9" stroke="#e2e8f0"/>
+    <text x="60" y="338" font-size="12" font-weight="700" letter-spacing="2" fill="#10b981">KERNEL TIER · SIGNED IMAGE</text>
+    <rect x="60" y="348" width="960" height="92" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-opacity="0.8" stroke-width="1.5"/>
+    <text x="82" y="374" font-size="16" font-weight="700" fill="#065f46">signed kernel image (UKI) — one file <tspan fill="#10b981" font-size="11.5">· kernel + initramfs + kernel command line</tspan></text>
+    <line x1="82" y1="386" x2="1018" y2="386" stroke="#10b981" stroke-opacity="0.35"/>
+    <text x="82" y="410" font-size="12.5" fill="#047857">signature checked by the bootloader · command line can not be changed after signing</text>
+    <text x="82" y="432" font-size="12.5" fill="#475569">boot image is measured into the TPM · kernel loads only signed modules</text>
+
+    <!-- STORAGE TIER (amber) -->
+    <rect x="40" y="472" width="1000" height="120" rx="14" fill="#f1f5f9" stroke="#e2e8f0"/>
+    <text x="60" y="492" font-size="12" font-weight="700" letter-spacing="2" fill="#d97706">STORAGE TIER · LUKS</text>
+    <rect x="60" y="498" width="470" height="78" rx="10" fill="#fffbeb" stroke="#d97706" stroke-opacity="0.6"/>
+    <text x="80" y="522" font-size="14.5" font-weight="700" fill="#92400e">encrypted volume A (LUKS)</text>
+    <text x="80" y="544" font-size="12.5" fill="#b45309">key sealed to PCR 7 + PCR 11 policy</text>
+    <text x="80" y="566" font-size="12.5" fill="#475569">opens only on the same TPM in the same boot state</text>
+    <rect x="550" y="498" width="470" height="78" rx="10" fill="#fffbeb" stroke="#d97706" stroke-opacity="0.6"/>
+    <text x="570" y="522" font-size="14.5" font-weight="700" fill="#92400e">encrypted volume B (LUKS)</text>
+    <text x="570" y="544" font-size="12.5" fill="#b45309">key bound to volume A</text>
+    <text x="570" y="566" font-size="12.5" fill="#475569">also needs the salt from volume A</text>
+
+    <!-- TPM SIDE BAR (rose, spans the boot tiers) -->
+    <rect x="1200" y="78" width="80" height="378" rx="12" fill="url(#tpm-rose)" stroke="#e11d48" stroke-opacity="0.5"/>
+    <text transform="rotate(-90 1234 267)" x="1234" y="267" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="2" fill="#be123c">TPM 2.0</text>
+    <text transform="rotate(-90 1256 267)" x="1256" y="267" text-anchor="middle" font-size="10.5" fill="#be123c" opacity="0.85">PCR 7 = Secure Boot state + keys</text>
+    <text transform="rotate(-90 1274 267)" x="1274" y="267" text-anchor="middle" font-size="10.5" fill="#be123c" opacity="0.85">PCR 11 = boot image measurements + policy</text>
+
+    <!-- FLOW ARROWS (drawn last) -->
+    <!-- 1: firmware verifies the bootloader -->
+    <line x1="300" y1="170" x2="300" y2="221" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <circle cx="300" cy="195" r="11" fill="#0284c7"/>
+    <text x="300" y="199" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">1</text>
+    <text x="314" y="199" font-size="11.5" fill="#475569">verify signature</text>
+
+    <!-- 2: bootloader verifies the kernel image -->
+    <line x1="300" y1="290" x2="300" y2="341" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <circle cx="300" cy="315" r="11" fill="#8b5cf6"/>
+    <text x="300" y="319" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">2</text>
+    <text x="314" y="319" font-size="11.5" fill="#475569">verify image signature</text>
+
+    <!-- boot image measured into the TPM (PCR 11) -->
+    <line x1="1024" y1="370" x2="1193" y2="370" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="1108" y="360" text-anchor="middle" font-size="11.5" fill="#475569">measure PCRs</text>
+
+    <!-- kernel asks the TPM for the disk keys -->
+    <line x1="1024" y1="410" x2="1193" y2="410" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="1108" y="400" text-anchor="middle" font-size="11.5" fill="#475569">request disk key</text>
+
+    <!-- TPM unseals the keys: only the same boot state opens the volumes -->
+    <path d="M 1240 460 L 1240 537 L 1013 537" fill="none" stroke="#e11d48" stroke-width="2" marker-end="url(#arrow-rose)"/>
+    <text x="1126" y="527" text-anchor="middle" font-size="11.5" fill="#be123c">unseal key</text>
+
+    <!-- LEGEND (badge bottom 639, 21 px above the canvas bottom) -->
+    <g font-size="11.5" fill="#475569">
+      <circle cx="70" cy="628" r="11" fill="#0284c7"/><text x="70" y="632" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">1</text><text x="89" y="632">firmware verifies bootloader</text>
+      <circle cx="330" cy="628" r="11" fill="#8b5cf6"/><text x="330" y="632" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">2</text><text x="349" y="632">bootloader verifies kernel</text>
+      <line x1="540" y1="628" x2="580" y2="628" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/><text x="588" y="632">measure into PCRs</text>
+      <line x1="738" y1="628" x2="778" y2="628" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/><text x="786" y="632">request disk key</text>
+      <line x1="926" y1="628" x2="966" y2="628" stroke="#e11d48" stroke-width="2" marker-end="url(#arrow-rose)"/><text x="974" y="632">unseal key · volumes open</text>
+      <text x="1280" y="632" fill="#64748b" text-anchor="end">keys never leave the TPM</text>
+    </g>
+  </svg>

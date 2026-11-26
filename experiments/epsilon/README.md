@@ -1,7 +1,9 @@
 ---
 title: Talos Upgrade & Rollback
 date: 2026/11/23
-date-modified: 2026/11/25
+date-modified: 2026/11/26
+abstract: |
+  This experiment upgrades a two-node Talos Linux QEMU cluster, upgrades Kubernetes, rolls the OS back to the previous version, and re-applies the upgrade, verifying the booted UKI entry at each step.
 ---
 
 # Deployment
