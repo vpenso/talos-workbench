@@ -103,6 +103,6 @@ Talos keeps two OS images (A/B slots)
 
 * ...failed upgrade can revert to a previous image
 * **How it works**
-- The previous kernel and OS image are kept after each upgrade.
-- If the new image cannot boot, the bootloader automatically falls back.
-- `talosctl rollback` updates the boot reference and reboots.
+  - The previous kernel and OS image are kept after each upgrade.
+  - If the new image cannot boot, the bootloader automatically falls back.
+  - `talosctl rollback` updates the boot reference and reboots.

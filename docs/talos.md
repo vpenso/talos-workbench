@@ -32,7 +32,7 @@ Sidero Labs, Talos Linux, Github
   - New files you add can be under any license
   - Keep license notices intact; provide source for modified files
 
-## Architecture
+# Architecture
 
 Immutable, atomic Linux image where `machined` replaces init, components talk over local gRPC sockets
 
@@ -79,26 +79,62 @@ Design Principles
   - Lost quorum locks the database to protect data
   - Performance drops as the cluster grows
 
-**Endpoints & Nodes**  
-<https://docs.siderolabs.com/talos/v1.14/learn-more/talosctl#endpoints-and-nodes>
-* Endpoints
-  - Endpoints are the addresses `talosctl` connects to directly.
-  - They can be IPs, DNS names, or a load balancer.
-  - Point them at the control plane nodes.
-  - With several endpoints, the client load balances and fails over.
-* Nodes
-  - The node is the target of the API call, selected with `-n`/`--nodes`.
-  - The docs recommend the flag over storing nodes in the config file.
-  - Each endpoint proxies requests to other nodes. You keep one endpoint for the whole cluster.
-  - Endpoint and node must join the same cluster. Proxying uses certificate auth.
+## Endpoints & Nodes
 
-**KubePrism**  
-<https://docs.siderolabs.com/talos/v1.14/configure-your-talos-cluster/system-configuration/kubeprism>
-* In-cluster highly-available control plane endpoint
-* How it is build...
-  - TCP load balancer on `localhost:7445` of every node.
-  - Filters out unhealthy endpoints and prefers lower latency.
-  - Talos reconfigures `kubelet`, `kube-scheduler`, `kube-controller-manager`, and `kube-proxy` to use it
-  - The port is local only; it cannot be reached from outside the cluster.
-  - Enabled by default; disable by removing the `KubePrismConfig` document.
-  - Worst case it behaves the same as the external endpoint, so it never makes things worse.
+
+Endpoints (cf. [talosctl#endpoints-and-nodes](https://docs.siderolabs.com/talos/v1.14/learn-more/talosctl#endpoints-and-nodes))
+
+- Endpoints are the addresses `talosctl` connects to directly.
+- They can be IPs, DNS names, or a load balancer.
+- Point them at the control plane nodes.
+- With several endpoints, the client load balances and fails over.
+
+Nodes
+
+- The node is the target of the API call, selected with `-n`/`--nodes`.
+- The docs recommend the flag over storing nodes in the config file.
+- Each endpoint proxies requests to other nodes. You keep one endpoint for the whole cluster.
+- Endpoint and node must join the same cluster. Proxying uses certificate auth.
+
+## KubePrism
+
+In-cluster highly-available control plane endpoint  
+[system-configuration/kubeprism](https://docs.siderolabs.com/talos/v1.14/configure-your-talos-cluster/system-configuration/kubeprism)
+
+How it is build...
+
+- TCP load balancer on `localhost:7445` of every node.
+- Filters out unhealthy endpoints and prefers lower latency.
+- Talos reconfigures `kubelet`, `kube-scheduler`, `kube-controller-manager`, and `kube-proxy` to use it
+- The port is local only; it cannot be reached from outside the cluster.
+- Enabled by default; disable by removing the `KubePrismConfig` document.
+- Worst case it behaves the same as the external endpoint, so it never makes things worse.
+
+**Inspect the local KubePrism TCP load balancer**:
+
+```bash
+talosctl -n $nodes get kubeprismstatuses
+```
+
+| Column | Meaning |
+|--------|---------|
+| `NODE` | The node you queried, from `-n` |
+| `NAMESPACE` | The resource namespace. KubePrism resources use `k8s`. |
+| `TYPE` | The resource kind: `KubePrismStatus`. |
+| `ID` | The instance name: `k8s-loadbalancer`. |
+| `VERSION` | The resource version (etcd revision counter), not a software version. |
+| `HOST` | The local address KubePrism listens on: `127.0.0.1:7445`. |
+| `HEALTHY` | `true` = running and has at least one healthy upstream. |
+
+**List API server addresses that the local KubePrism load balancer**
+
+```bash
+talosctl -n $nodes get kubeprismendpoints
+```
+
+- `kubeprismendpoints` is the KubePrismEndpoints resource (namespace `k8s`).
+- It holds the upstream list (host + port) for this node's KubePrism.
+- KubePrism load-balances across this list and failovers if one entry is down.
+- Worker reaches the API through any other server, via `127.0.0.1:7445`.
+- If one node is down, KubePrism uses another endpoint.
+- So the worker's kubelet stays connected even when one path fails.

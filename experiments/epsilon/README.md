@@ -1,5 +1,5 @@
 ---
-title: Talos Upgrade
+title: Talos Upgrade & Rollback
 date: 2026/11/23
 date-modified: 2026/11/25
 ---

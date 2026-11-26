@@ -27,8 +27,6 @@ What each does
 - `endpoints` — Addresses `talosctl` connects to for the Talos API (port 50000).
 - `nodes` — Default targets for commands. They do not have to be endpoints.
 
-
-
 ## Machine Configuration  
 
 **Required Inputs**
